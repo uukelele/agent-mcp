@@ -120,7 +120,7 @@ OpenCode starts it for you:
 Because this server uses a static header token and does not advertise OAuth,
 set `"oauth": false`:
 
-```jsonc title="opencode.jsonc"
+```json title="opencode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
