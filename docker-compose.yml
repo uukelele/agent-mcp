@@ -1,0 +1,10 @@
+services:
+  mcp:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      AGENT_MCP_TOKEN: ${AGENT_MCP_TOKEN:?set AGENT_MCP_TOKEN}
+    volumes:
+      - ./workspace:/workspace
