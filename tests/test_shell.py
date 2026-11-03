@@ -23,8 +23,9 @@ def runner(ws: Workspace) -> ShellRunner:
 
 def _py(code: str) -> str:
     if os.name == "nt":
-        # PowerShell needs the call operator before a quoted executable path.
-        return f'& "{sys.executable}" -c "{code}"'
+        # PowerShell needs the call operator before a quoted executable path,
+        # and an explicit exit keeps the native exit code.
+        return f'& "{sys.executable}" -c "{code}"; exit $LASTEXITCODE'
     return f'"{sys.executable}" -c "{code}"'
 
 
