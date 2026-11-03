@@ -33,11 +33,11 @@ OpenCode / any MCP client
 | `write` | `path`, `content` | Create or replace a file, creating parents |
 | `patch` | `patchText` | `*** Begin Patch` envelope: add, update, move, delete |
 | `shell` | `command`, `workdir?`, `timeout?`, `background?` | Host shell, millisecond timeout, process-tree kill, background log |
-| `webfetch` | `url`, `format?`, `timeout?` | `markdown`, `text`, or `html`; blocks private addresses by default |
-| `websearch` | `query` | Brave (`BRAVE_API_KEY`) or Tavily (`TAVILY_API_KEY`) |
+| `webfetch` | `url`, `format?`, `timeout?`, `offset?` | Markdown reader with metadata, main-content extraction, `.md`/`llms.txt` preference, and pagination; `text`/`html` retained for compatibility; PDFs/images returned as MCP media |
+| `websearch` | `query`, `max_results?`, `recency?`, `news?` | DuckDuckGo results with no API key; optional recency filter or news search |
 
 Not mirrored: `question`, `skill`, `subagent`, and `execute` are client-side
-tools. `websearch` needs a provider key; it returns a clear error otherwise.
+tools. `websearch` uses DuckDuckGo's public endpoint and needs no provider key.
 
 ## Install
 
@@ -212,9 +212,11 @@ as UTF-8 with LF; updates keep the file's existing encoding and newline style.
 - `shell` is **not sandboxed**. It runs as the server user with that user's full
   privileges. Run the server as a dedicated, unprivileged account and restrict
   network access.
-- `webfetch` blocks loopback, private, link-local, and reserved IPs by default
-  (including redirect targets). `--allow-private-web` disables that guard.
-- `websearch` only calls Brave or Tavily; no provider key means no request.
+- `webfetch` checks every redirect hop and pins the connection to the checked
+  DNS address, so rebinding cannot swap in a private host. Loopback, private,
+  link-local, and reserved addresses are blocked by default, and cloud
+  metadata addresses stay blocked even with `--allow-private-web`.
+- `websearch` only calls DuckDuckGo through `ddgs`; it needs no API key.
 - `shell` inherits the server environment, including any provider API keys
   stored there. Run the service under a dedicated account and keep unrelated
   secrets out of its environment.
@@ -231,6 +233,16 @@ as UTF-8 with LF; updates keep the file's existing encoding and newline style.
 - `glob` returns files, not directories.
 - Background shell commands return immediately; there is no completion
   notification. Poll the returned log path with `read`.
+- `webfetch` does not run JavaScript. JavaScript-only pages, bot checks, and
+  paywalls may return an error or a link-preview summary; use another source.
+- `webfetch` prefers a site's Markdown version, `.md` twin, and `/llms.txt` when
+  present. HTML extraction is heuristic, so some unusual layouts may lose
+  content. Site-specific readers cover X/Twitter, YouTube, Reddit, Stack
+  Exchange, TikTok, and link-preview-only social sites.
+- `webfetch` returns PDFs and images as MCP file/image content; `format="text"`
+  and `format="html"` use a simpler raw fetch without main-content extraction.
+- `websearch` depends on DuckDuckGo's public endpoint; rate limits or changes on
+  their side can make a search fail. Re-run or rephrase the query.
 - The server does not implement OpenCode's permission prompts, snapshots, or
   `patch`-for-GPT-only policy. Your MCP client decides when to call a tool.
 
@@ -245,4 +257,5 @@ uv pip install -e ".[dev]"   # or: uv pip install -e . pytest httpx
 
 ## License
 
-MIT
+MIT. The web reader, site-specific readers, and search result formatting are
+adapted from the author's Obsidian project.

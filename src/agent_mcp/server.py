@@ -10,9 +10,11 @@ import secrets
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.auth import AccessToken, AuthProvider
+from fastmcp.utilities.types import File, Image
 from mcp.types import ToolAnnotations
 
 from .context import ToolError, Workspace
@@ -25,7 +27,7 @@ from .tools.shell import DEFAULT_TIMEOUT_MS, ShellRunner
 from .tools.web import webfetch as webfetch_tool
 from .tools.web import websearch as websearch_tool
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]"}
 
@@ -262,16 +264,26 @@ def create_server(config: ServerConfig) -> FastMCP:
     @mcp.tool(
         name="webfetch",
         description=(
-            "Fetch an HTTP or HTTPS URL as markdown (default), text, or raw HTML. "
+            "Read a web page as clean Markdown: title, author/date metadata, and "
+            "the main content without navigation, ads, cookie banners or footers. "
+            "Prefers Markdown versions, adds /llms.txt for site roots, and pages "
+            "long results with offset. PDFs and images are returned as files. "
             "Private and loopback addresses are blocked unless the operator allows them."
         ),
         annotations=network,
+        output_schema=None,
     )
-    def webfetch(url: str, format: str = "markdown", timeout: int = 30) -> str:
+    def webfetch(
+        url: str,
+        format: str = "markdown",
+        timeout: int = 30,
+        offset: int = 0,
+    ) -> str | File | Image:
         return webfetch_tool(
             url,
             format=format,
             timeout=timeout,
+            offset=offset,
             allow_private=config.allow_private_web,
         )
 
@@ -279,13 +291,19 @@ def create_server(config: ServerConfig) -> FastMCP:
     @mcp.tool(
         name="websearch",
         description=(
-            "Search the web. Requires BRAVE_API_KEY or TAVILY_API_KEY in the server "
-            "environment; returns a clear error when neither is configured."
+            "Search the web through DuckDuckGo. Returns ranked title, URL and "
+            "snippet results. Use recency to limit results to the last day, week, "
+            "month or year, or news=true for news articles. No API key is needed."
         ),
         annotations=network,
     )
-    def websearch(query: str) -> str:
-        return websearch_tool(query)
+    def websearch(
+        query: str,
+        max_results: int = 8,
+        recency: Literal["day", "week", "month", "year"] | None = None,
+        news: bool = False,
+    ) -> str:
+        return websearch_tool(query, max_results, recency, news)
 
     return mcp
 
@@ -343,7 +361,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--allow-private-web",
         action="store_true",
-        help="Allow webfetch to reach loopback/private addresses",
+        help=(
+            "Allow webfetch to reach loopback/private addresses "
+            "(cloud metadata addresses stay blocked)"
+        ),
     )
     parser.add_argument(
         "--shell",
