@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -21,6 +22,9 @@ def runner(ws: Workspace) -> ShellRunner:
 
 
 def _py(code: str) -> str:
+    if os.name == "nt":
+        # PowerShell needs the call operator before a quoted executable path.
+        return f'& "{sys.executable}" -c "{code}"'
     return f'"{sys.executable}" -c "{code}"'
 
 
